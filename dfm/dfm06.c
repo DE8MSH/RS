@@ -408,8 +408,8 @@ int conf_out(ui8_t *conf_bits) {
 
 
 float print_gpx() {
-  int i, j, R;
-  float x, y, d, a, b , c, cq, alpha, alphaasin;
+  int i, j, R, startdeg=90;
+  float x, xx, y, yy, d, a,b,c,cc,diffl, cq, alpha, alphaasin, atanme,bearing, rad;
   // 53.055390 8.793852
   float lath = 53.055390; 
   float lonh = 8.73852;
@@ -423,8 +423,12 @@ float print_gpx() {
   d=b/1000;
   cq=(a*a)+(b*b);
   c=sqrt(cq);
+  rad= 0.017453;
   alpha=a/c;
   alphaasin=asin(alpha)*180/PI;
+
+  
+
 
   if (start) {
 
@@ -451,7 +455,8 @@ float print_gpx() {
               printf("%.1f,",a);
               printf("%.1f,",b);
               printf("%.1f,",c);
-              printf("%.1f",alphaasin);
+              printf("%.1f,",alphaasin);
+              printf("%.1f",alphaasin+startdeg);
 //              printf("%5.1f,", gpx.dir);
 //              printf("%5.2f,", gpx.horiV);
 //              printf("%5.2f", gpx.vertV);
