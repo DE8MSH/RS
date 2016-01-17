@@ -1,12 +1,15 @@
-
-/*
- *
- */
-
 #include <stdio.h>
 #include <string.h>
+
 #include <math.h>
 #include "global.h"
+
+#include<netinet/in.h>    
+#include<stdlib.h>    
+#include<sys/socket.h>    
+#include<sys/stat.h>    
+#include<sys/types.h>    
+#include<unistd.h> 
 
 #ifdef CYGWIN
   #include <fcntl.h>  // cygwin: _setmode()
@@ -412,7 +415,7 @@ float print_gpx() {
   float x, y, d, a, b , c, cq, alpha, alphaasin;
   // 53.055390 8.793852
   float lath = 53.055390; 
-  float lonh = 8.73852;
+  float lonh = 8.93852;
   R=6371000;
   a=gpx.h;
   //a=18000;
@@ -440,6 +443,7 @@ float print_gpx() {
 
           if (option_auto && option_verbose) printf("[%c] ", option_inv?'-':'+');
           printf("[%3d],", gpx.frnr);
+          write(new_socket, "[%3d]\n", gpx.frnr); 
           printf("%4d-%02d-%02d,", gpx.jahr, gpx.monat, gpx.tag);
           printf("%02d:%02d:%04.1f,", gpx.std, gpx.min, gpx.sek);
           printf("%.7f,", gpx.lat);
@@ -451,10 +455,10 @@ float print_gpx() {
               printf("%.1f,",a);
               printf("%.1f,",b);
               printf("%.1f,",c);
-              printf("%.1f",alphaasin);
-//              printf("%5.1f,", gpx.dir);
-//              printf("%5.2f,", gpx.horiV);
-//              printf("%5.2f", gpx.vertV);
+              printf("%.1f,",alphaasin);
+              printf("%5.1f,", gpx.dir);
+              printf("%5.2f,", gpx.horiV);
+              printf("%5.2f", gpx.vertV);
               if (gpx.sonde_id >= 0) {
                   printf(",(ID:%06X)", gpx.sonde_id);
                   gpx.sonde_id = -1;
@@ -531,8 +535,17 @@ int main(int argc, char **argv) {
 #endif
 	
     fpname = argv[0];
+    // 53.045390 8.893852
     lathome = argv[3];
     lonhome = argv[4];
+
+/////////////////// MINI WEBSERVER BY http://blog.manula.org/2011/05/writing-simple-web-server-in-c.html
+    int create_socket, new_socket;    
+    socklen_t addrlen;    
+    int bufsize = 1024;    
+    char *buffer = malloc(bufsize);    
+    struct sockaddr_in address;    
+//////////////////////    
 
     ++argv;
     while ((*argv) && (!wavloaded)) {
@@ -571,10 +584,39 @@ int main(int argc, char **argv) {
     }
     if (!wavloaded) fp = stdin;
 
+/////////////////// MINI WEBSERVER BY http://blog.manula.org/2011/05/writing-simple-web-server-in-c.html
+    if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) > 0){    
+       printf("The socket was created\n");
+    }
+    
+    address.sin_family = AF_INET;    
+    address.sin_addr.s_addr = INADDR_ANY;    
+    address.sin_port = htons(8081);    
+    
+    if (bind(create_socket, (struct sockaddr *) &address, sizeof(address)) == 0){    
+       printf("Binding Socket\n");
+    }
+    
+    if (listen(create_socket, 10) < 0) {    
+       perror("server: listen");    
+       exit(1);    
+    }    
+    
+    if ((new_socket = accept(create_socket, (struct sockaddr *) &address, &addrlen)) < 0) {    
+       perror("server: accept");    
+       exit(1);    
+    }    
+    
+    if (new_socket > 0){    
+       printf("Connected to client\n");
+    }
+//////////////////////    
 
     i = read_wav_header(fp);
     if (i) {
         fclose(fp);
+        close(new_socket);     
+        close(create_socket); 
         return -1;
     }
 
@@ -591,6 +633,9 @@ int main(int argc, char **argv) {
 
         if (len == 0) { // reset_frame();
             if (pos > RAWBITFRAME_LEN-10) { // Problem wegen Interleaving
+/////////////////// MINI WEBSERVER BY http://blog.manula.org/2011/05/writing-simple-web-server-in-c.html
+                write(new_socket, "hello world\n", 12);    
+//////////////////////    
                 print_frame();//byte_count
                 header_found = 0;
                 pos = FRAMESTART;
@@ -623,7 +668,10 @@ int main(int argc, char **argv) {
     }
 
     fclose(fp);
+    close(new_socket);     
+    close(create_socket);    
 
     return 0;
 }
+
 
